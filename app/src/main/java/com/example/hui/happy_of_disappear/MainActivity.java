@@ -36,7 +36,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     //需要下落的点
     private int[][] needDownPoint = new int [row][col];
 
-    boolean flag;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -149,6 +149,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         }
 
         if(clickCount==2){
+            for(int i = 0;i<col;i++){
+                eachColDownNum[i] = 0;
+            }
             //第二次点击，判断他们是不是相邻的，如果相邻交换他们的位置,并且将记录清空
             Thread thread = new Thread(){
                 @Override
@@ -235,7 +238,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 }
             });
 
-            Thread.sleep(500);
+            Thread.sleep(200);
 
             firstClick = null;
             secondClick = null;
@@ -576,29 +579,29 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     isEliminate(i,j,arr);
             }
         }
-        flag = false;
+
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
                 if(eliminateSet.size()!=0){
-                    flag = true;
                     eliminate();
                 }
             }
         });
 
 
-        if(flag){
+        if(eliminateSet.size()!=0){
             for(int i = 0;i<col;i++){
                 eachColDownNum[i] = 0;
             }
 
-            Thread.sleep(200);
+            Thread.sleep(300);
 
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
                     changArr();
+                    Log.i("TAG","啥玩意");
                 }
             });
 
@@ -607,13 +610,23 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
+                    gridLayout.removeAllViews();
                     init();
                 }
             });
+            Thread.sleep(600);
 
             needCheckPoint();
         }
-
+        else {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    gridLayout.removeAllViews();
+                    init();
+                }
+            });
+        }
     }
 
 }
