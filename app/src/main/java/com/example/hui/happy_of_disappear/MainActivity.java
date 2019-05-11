@@ -147,8 +147,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             int firstCol = (int)v.getId()%10;
             secondClick = new Location (firstRow,firstCol);
         }
-
+        if(firstClick!=null){
+            Log.i("TAG","第一个点："+firstClick.getRow()+" "+firstClick.getCol());
+        }
+        if(secondClick!=null){
+            Log.i("TAG","第二个点："+secondClick.getRow()+" "+secondClick.getCol());
+        }
         if(clickCount==2){
+
             for(int i = 0;i<col;i++){
                 eachColDownNum[i] = 0;
             }
@@ -204,7 +210,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 });
             }
 
-            Thread.sleep(600);
+            Thread.sleep(800);
 
             //交换并消除
             runOnUiThread(new Runnable() {
@@ -218,7 +224,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             });
 
             //休眠200毫秒
-            Thread.sleep(300);
+            Thread.sleep(1000);
 
 
             //消去之后，将消去点变为0，并将上面的点下落。
@@ -309,7 +315,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             ObjectAnimator second_moveX2 =  ObjectAnimator.ofFloat(secondView,"translationX",firstView.getLeft()-secondView.getLeft(),0f);
             AnimatorSet animatorSet = new AnimatorSet();
             animatorSet.play(first_moveX1).with(second_moveX1).before(first_moveX2).before(second_moveX2);
-            animatorSet.setDuration(500);
+            animatorSet.setDuration(250);
             animatorSet.start();
         }
         //上下交换
@@ -320,7 +326,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             ObjectAnimator second_moveY2 =  ObjectAnimator.ofFloat(secondView,"translationY",firstView.getBottom()-secondView.getBottom(),0f);
             AnimatorSet animatorSet = new AnimatorSet();
             animatorSet.play(first_moveY1).with(second_moveY1).before(first_moveY2).before(second_moveY2);
-            animatorSet.setDuration(500);
+            animatorSet.setDuration(250);
             animatorSet.start();
         }
 
@@ -442,20 +448,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         int temp = arr[firstClick.getRow()][firstClick.getCol()];
         arr[firstClick.getRow()][firstClick.getCol()] = arr[secondClick.getRow()][secondClick.getCol()];
         arr[secondClick.getRow()][secondClick.getCol()] = temp;
-    }
-
-    private void test(){
-        int firstCol = firstClick.getCol();
-        int firstRow = firstClick.getRow();
-        int secondCol = secondClick.getCol();
-        int secondRow = secondClick.getRow();
-        int firstId = firstRow*10+firstCol;
-        int secondId = secondRow*10+secondCol;
-        ImageView firstView = (ImageView) findViewById(firstId);
-        ImageView secondView = (ImageView) findViewById(secondId);
-        Log.i("TAG","交换后的id："+firstView.getId()+"");
-        Log.i("TAG","交换后的id："+secondView.getId()+"");
-
     }
 
     private void eliminate(){
@@ -595,7 +587,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 eachColDownNum[i] = 0;
             }
 
-            Thread.sleep(300);
+            Thread.sleep(1000);
 
             runOnUiThread(new Runnable() {
                 @Override
