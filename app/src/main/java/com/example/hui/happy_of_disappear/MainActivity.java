@@ -28,6 +28,16 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     Random mRandom = new Random();
     private HashSet<String> eliminateSet = new HashSet<>();
     private int clickCount = 0;
+    private ImageView firstView;
+    private ImageView secondView;
+
+    //每一列下落的个数
+    private int[] eachColDownNum = new int[col];
+    //需要下落的点
+    private int[][] needDownPoint = new int [row][col];
+
+    boolean flag;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -35,8 +45,20 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         gridLayout =findViewById(R.id.grid_layout);
         gridLayout.setColumnCount(col);
         gridLayout.setRowCount(row);
-        initArr(arr);
-        init();
+        Thread thread = new Thread(){
+            @Override
+            public void run() {
+                super.run();
+                initArr(arr);
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        init();
+                    }
+                });
+            }
+        };
+        thread.start();
     }
 
     @SuppressLint("ResourceAsColor")
@@ -45,8 +67,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             for(int j = 0;j<col;j++){
                 ImageView image = new ImageView(this);
                 image.setClickable(true);
-                String id = (i+""+j);
-                image.setId(Integer.parseInt(id));
+                image.setId(i*10+j);
                 image.setOnClickListener(this);
                 GridLayout.LayoutParams para = new GridLayout.LayoutParams();
                 para.width = 0;
@@ -66,7 +87,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 if(arr[i][j]==4)
                     image.setImageBitmap(getBitmap(R.drawable.frog));
                 if(arr[i][j]==0){
-                    image.setBackgroundColor(R.color.gray);
+                    image.setImageBitmap(getBitmap(R.drawable.white));
                     image.setClickable(false);
                 }
                 gridLayout.addView(image,para);
@@ -81,6 +102,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                if(i-2>=0&&arr[i][j]==arr[i-1][j]&&arr[i-2][j]==arr[i][j]||j-2>=0&&arr[i][j]==arr[i][j-1]&&arr[i][j]==arr[i][j-2])
                    j--;
            }
+       }
+       for(int i = 0;i<col;i++){
+           eachColDownNum[i] = 0;
        }
     }
 
@@ -110,12 +134,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     @Override
-    public void onClick(View v) {
+    public void onClick(final View v) {
         if(clickCount==0){
             clickCount++;
             int firstRow =(int) v.getId()/10;
             int firstCol = (int)v.getId()%10;
             firstClick = new Location (firstRow,firstCol);
+
         }else if(clickCount==1){
             clickCount++;
             int firstRow =(int) v.getId()/10;
@@ -125,52 +150,18 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         if(clickCount==2){
             //第二次点击，判断他们是不是相邻的，如果相邻交换他们的位置,并且将记录清空
-            double distance = distance(firstClick,secondClick);
-            if(distance>0&&distance<=1){
-
-                clickCount=0;
-                //第一个点和第二个点交换位置
-                if(isEliminate(firstClick.getRow(),firstClick.getCol(),arr)&&isEliminate(secondClick.getRow(),secondClick.getCol(),arr)){
-                    swapArr();
-                    swapID();
-                    swapView(firstClick,secondClick);
-                    for(String str:eliminateSet){
-                        Log.i("TAG","消除的坐标："+str);
+            Thread thread = new Thread(){
+                @Override
+                public void run() {
+                    super.run();
+                    try {
+                        readyToEliminate(v);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
                     }
                 }
-                else if(isEliminate(secondClick.getRow(),secondClick.getCol(),arr)){
-                    swapArr();
-                    swapID();
-                    swapView(firstClick,secondClick);
-                    for(String str:eliminateSet){
-                        Log.i("TAG","消除的坐标："+str);
-                    }
-
-
-                }
-                else if(isEliminate(firstClick.getRow(),firstClick.getCol(),arr)){
-                    swapArr();
-                    swapID();
-                    swapView(firstClick,secondClick);
-                    for(String str:eliminateSet){
-                        Log.i("TAG","消除的坐标："+str);
-                    }
-                }
-                else{
-                    swapViewAndBack(firstClick,secondClick);
-                }
-
-                if(eliminateSet.size()!=0){
-                    eliminate();
-                }
-                eliminateSet.clear();
-            }
-            //如果不是相邻的位置，将第一个firstClick设为第二次的，第二次的为null
-            else{
-                clickCount = 1;
-                firstClick = secondClick;
-                secondClick = null;
-            }
+            };
+            thread.start();
         }
         Log.i("TAG","id:"+v.getId());
     }
@@ -181,6 +172,83 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         int secondCol = secondClick.getCol();
         int secondRow = secondClick.getRow();
         return Math.sqrt((firstCol-secondCol)*(firstCol-secondCol)+(firstRow-secondRow)*(firstRow-secondRow));
+    }
+
+    private void readyToEliminate(View v) throws InterruptedException {
+        double distance = 0;
+        if(firstClick!=null&&secondClick!=null)
+            distance= distance(firstClick,secondClick);
+        else
+            return;
+        if(distance>0&&distance==1){
+            clickCount=0;
+            //第一个点和第二个点交换位置
+            if(isEliminate(firstClick.getRow(),firstClick.getCol(),arr)&&isEliminate(secondClick.getRow(),secondClick.getCol(),arr)){
+                swapViewOnMainThread();
+            }
+            else if(isEliminate(secondClick.getRow(),secondClick.getCol(),arr)){
+                swapViewOnMainThread();
+            }
+            else if(isEliminate(firstClick.getRow(),firstClick.getCol(),arr)){
+                swapViewOnMainThread();
+            }
+            else{
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        swapViewAndBack(firstClick,secondClick);
+                    }
+                });
+            }
+
+            Thread.sleep(600);
+
+            //交换并消除
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    if(eliminateSet.size()!=0){
+                        swapRect();
+                        eliminate();
+                    }
+                }
+            });
+
+            //休眠200毫秒
+            Thread.sleep(300);
+
+
+            //消去之后，将消去点变为0，并将上面的点下落。
+            changArr();
+
+            Thread.sleep(600);
+
+
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    for(int i = 0;i<col;i++){
+                        eachColDownNum[i] = 0;
+                    }
+                    gridLayout.removeAllViews();
+                    init();
+                }
+            });
+
+            Thread.sleep(500);
+
+            firstClick = null;
+            secondClick = null;
+            needCheckPoint();
+
+        }
+
+        //如果不是相邻的位置，将第一个firstClick设为第二次的，第二次的为null
+        else{
+            clickCount = 1;
+            firstClick = secondClick;
+            secondClick = null;
+        }
     }
 
     //交换View
@@ -204,6 +272,18 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             ObjectAnimator.ofFloat(firstView,"translationY",0f,secondView.getBottom()-firstView.getBottom()).setDuration(500).start();
             ObjectAnimator.ofFloat(secondView,"translationY",0f,firstView.getBottom()-secondView.getBottom()).setDuration(500).start();
         }
+    }
+
+    private void swapViewOnMainThread(){
+        swapArr();
+        swapID();
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                swapView(firstClick,secondClick);
+            }
+        });
+
     }
 
     private void swapViewAndBack(Location firstClick, Location secondClick){
@@ -251,9 +331,12 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 arr2[m][n] = arr[m][n];
             }
         }
-        int temp = arr2[firstClick.getRow()][firstClick.getCol()];
-        arr2[firstClick.getRow()][firstClick.getCol()] = arr2[secondClick.getRow()][secondClick.getCol()];
-        arr2[secondClick.getRow()][secondClick.getCol()] = temp;
+        if(firstClick!=null&&secondClick!=null){
+            int temp = arr2[firstClick.getRow()][firstClick.getCol()];
+            arr2[firstClick.getRow()][firstClick.getCol()] = arr2[secondClick.getRow()][secondClick.getCol()];
+            arr2[secondClick.getRow()][secondClick.getCol()] = temp;
+        }
+
 
         int num1 = 0;
         int num2 = 0;
@@ -262,28 +345,28 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         //判断这个点的上下左右
         //上
         for(int k=i-1;k>=0;k--){
-            if(arr2[i][j]==arr2[k][j])
+            if(arr2[i][j]==arr2[k][j]&&arr2[i][j]!=0)
                 num1++;
             else
                 break;
         }
         //下
         for(int k = i+1;k<(row>i+4?i+4:row);k++){
-            if(arr2[i][j]==arr2[k][j])
+            if(arr2[i][j]==arr2[k][j]&&arr2[i][j]!=0)
                 num2++;
             else
                 break;
         }
         //左
         for(int k=j-1;k>=0;k--){
-            if(arr2[i][j]==arr2[i][k])
+            if(arr2[i][j]==arr2[i][k]&&arr2[i][j]!=0)
                 num3++;
             else
                 break;
         }
         //右
         for(int k = j+1;k<(col>j+4?j+4:col);k++){
-            if(arr2[i][j]==arr2[i][k])
+            if(arr2[i][j]==arr2[i][k]&&arr2[i][j]!=0)
                 num4++;
             else
                 break;
@@ -297,6 +380,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
             eliminateSet.add(i+""+j);
             if(col_num>=3){
+
                 for(;num1>0;num1--){
                     String location = (i-num1)+""+j;
                     eliminateSet.add(location);
@@ -307,6 +391,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 }
             }
             if(row_num>=3){
+
                 for(;num3>0;num3--){
                     String location = i+""+(j-num3);
                     eliminateSet.add(location);
@@ -318,9 +403,9 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             }
             return true;
         }
-
         return false;
     }
+
 
     //交换选中两个的ID
     private void swapID(){
@@ -335,15 +420,17 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         ImageView firstView = (ImageView) findViewById(firstId);
         ImageView secondView = (ImageView) findViewById(secondId);
+
+
 //        Log.i("TAG","first交换前的id："+firstId);
 //        Log.i("TAG","second交换前的id："+secondId);
-//        GridLayout.LayoutParams para ;
-//        para = (GridLayout.LayoutParams) firstView.getLayoutParams();
-//        firstView.setLayoutParams(secondView.getLayoutParams());
-//        secondView.setLayoutParams(para);
+
 
         firstView.setId(secondId);
         secondView.setId(firstId);
+
+        this.firstView = firstView;
+        this.secondView = secondView;
 //        Log.i("TAG","first交换后的id："+firstView.getId());
 //        Log.i("TAG","second交换后的id："+secondView.getId());
     }
@@ -370,10 +457,163 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private void eliminate(){
         ExplosionField explosionField = ExplosionField.attach2Window(this);
-
         for(String id:eliminateSet){
             ImageView eliminateView = (ImageView) findViewById(Integer.parseInt(id));
             explosionField.explode(eliminateView);
         }
     }
+
+    //改变View的Rect,避免消去的时候重绘View，然后造成View的突然改变位置
+    private void swapRect(){
+        //左右交换
+        if(firstView.getTop()==secondView.getTop()){
+            int left = firstView.getLeft();
+            int right = firstView.getRight();
+            firstView.setLeft(secondView.getLeft());
+            firstView.setRight(secondView.getRight());
+            firstView.setTranslationX(0);
+            firstView.setX(firstView.getLeft());
+
+            secondView.setLeft(left);
+            secondView.setRight(right);
+            secondView.setTranslationX(0);
+            secondView.setX(secondView.getLeft());
+
+        }
+
+        //上下交换
+        else{
+            int top = firstView.getTop();
+            int bottom = firstView.getBottom();
+            firstView.setTop(secondView.getTop());
+            firstView.setBottom(secondView.getBottom());
+            firstView.setTranslationY(0);
+            firstView.setY(firstView.getTop());
+
+            secondView.setTop(top);
+            secondView.setBottom(bottom);
+            secondView.setTranslationY(0);
+            secondView.setY(secondView.getTop());
+        }
+    }
+
+    //将可消去点变为0
+    private void changArr(){
+        for(String id:eliminateSet){
+            int imageId = Integer.parseInt(id);
+            int i = imageId/10;
+            int j = imageId%10;
+            arr[i][j] = 0;
+            eachColDownNum[j]++;
+        }
+        eliminateSet.clear();
+        record();
+        dowmAnimator();
+    }
+
+    //记录下落的点和每一列下落的个数和下落后需要检测的点
+    private void record(){
+
+        for(int p = 0;p<row;p++){
+            for(int q = 0;q<col;q++){
+                needDownPoint[p][q] = 0;
+            }
+        }
+
+        for(int p = 0;p<row;p++){
+            for(int q = 0;q<col;q++){
+                if(arr[p][q] == 0){
+                    for(int k = p-1;k>=0;k--){
+                        if(arr[k][q]!=0){
+                            needDownPoint[k][q] = 1;
+                        }else{
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        for(int p = row-1;p>=0;p--){
+            for(int q = col-1;q>=0;q--){
+//                if(arr[p][q] == 0){
+//                    for(int k = p;k>0;k--){
+//                        arr[k][q] = arr[k-1][q];
+//                        arr[k-1][q] = 0;
+//                    }
+//                    arr[0][q] = 0;
+//                }
+                //需要下落的点下落
+                if(needDownPoint[p][q]==1){
+                    arr[p+eachColDownNum[q]][q] = arr[p][q];
+                    arr[p][q] = 0;
+                }
+            }
+        }
+    }
+
+    private void dowmAnimator(){
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                for(int i = 0;i<row;i++){
+                    for(int j = 0;j<col;j++){
+                        if(needDownPoint[i][j]==1){
+                            ImageView imageView =(ImageView) findViewById(i*10+j);
+                            ObjectAnimator.ofFloat(imageView,"translationY",0f,imageView.getHeight()*eachColDownNum[j]).setDuration(500).start();
+                        }
+                    }
+                }
+            }
+        });
+
+    }
+
+    private void needCheckPoint() throws InterruptedException {
+        for(int i = 0;i<row;i++){
+            for(int j = 0;j<col;j++){
+                if(arr[i][j]!=0)
+                    isEliminate(i,j,arr);
+            }
+        }
+        flag = false;
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                if(eliminateSet.size()!=0){
+                    flag = true;
+                    eliminate();
+                }
+            }
+        });
+
+
+        if(flag){
+            for(int i = 0;i<col;i++){
+                eachColDownNum[i] = 0;
+            }
+
+            Thread.sleep(200);
+
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    changArr();
+                }
+            });
+
+            Thread.sleep(600);
+
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    init();
+                }
+            });
+
+            needCheckPoint();
+        }
+
+    }
+
 }
